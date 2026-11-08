@@ -1576,8 +1576,7 @@ static int doLoad(char** argv, char * const envp[]) {
     // 25Q4 bumps the kernel requirement up to 5.10
     // see also: //system/netd/tests/kernel_test.cpp TestKernel510
     if (isAtLeast25Q4 && !isAtLeastKernelVersion(5, 10)) {
-        ALOGE("Android 25Q4 requires kernel 5.10.");
-        return 7;
+        ALOGW("Android 25Q4 requires kernel 5.10.");
     }
 
     // 26Q4 bumps the kernel requirement up to 5.15
@@ -1617,23 +1616,6 @@ static int doLoad(char** argv, char * const envp[]) {
             ALOGW("Android V+ only supports LTS kernels.");
             bad = true;
         }
-
-#define REQUIRE(maj, min, sub) \
-        if (isKernelVersion(maj, min) && !isAtLeastKernelVersion(maj, min, sub)) { \
-            ALOGW("Android V+ requires %d.%d kernel to be %d.%d.%d+.", maj, min, maj, min, sub); \
-            bad = true; \
-        }
-
-        REQUIRE(4, 19, 236)
-        REQUIRE(5, 4, 186)
-        REQUIRE(5, 10, 199)
-        REQUIRE(5, 15, 136)
-        REQUIRE(6, 1, 57)
-        REQUIRE(6, 6, 0)
-        REQUIRE(6, 12, 0)
-        REQUIRE(6, 18, 9)
-
-#undef REQUIRE
 
         if (bad) {
             ALOGE("Unsupported kernel version (%07x).", kernelVer);
@@ -1754,12 +1736,14 @@ static int doLoad(char** argv, char * const envp[]) {
         //  kernel does not have CONFIG_BPF_JIT=y)
         // BPF_JIT is required by R VINTF (which means 4.14/4.19/5.4 kernels),
         // but 4.14/4.19 were released with P & Q, and only 5.4 is new in R+.
-        if (!writeFile("/proc/sys/net/core/bpf_jit_enable", "1\n")) return 24;
+        if (!writeFile("/proc/sys/net/core/bpf_jit_enable", "1\n") &&
+            android::bpf::isAtLeastKernelVersion(4, 14, 0)) return 24;
 
         // Enable JIT kallsyms export for privileged users only
         // (Note: this (open) will fail with ENOENT 'No such file or directory' if
         //  kernel does not have CONFIG_HAVE_EBPF_JIT=y)
-        if (!writeFile("/proc/sys/net/core/bpf_jit_kallsyms", "1\n")) return 25;
+        if (!writeFile("/proc/sys/net/core/bpf_jit_kallsyms", "1\n") &&
+            android::bpf::isAtLeastKernelVersion(4, 14, 0)) return 25;
     }
 
     // Create all the pin subdirectories
